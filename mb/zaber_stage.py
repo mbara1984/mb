@@ -35,8 +35,8 @@ class zaber(object):
         self.ser = serial.Serial(tty, 9600, 8, 'N', 1, timeout=.5)
         self.timeout=.5
         self.scale = [1,1,1]
-        send(self.ser,0,53,37)
-        receive(self.ser) # get microstepping axis 3
+        #send(self.ser,0,53,37)
+        #receive(self.ser) # get microstepping axis 3
         
     def moveto(self,x,axis=1):
         send(self.ser,axis,20,int(x*self.scale[axis]));
@@ -179,6 +179,16 @@ class zaber(object):
         self.x = rep
         return rep
 
+    def get_microsteps(self,axis=1):
+        self.ser.flushOutput()
+        self.ser.flushInput()        
+        send(self.ser,axis, 53, 37)        
+        time.sleep(.25)
+        rep,_ = receive(self.ser)
+        print(rep,'N u-steps ')
+        self.x = rep
+        return rep
+    
 
     def get_hold_current(self,axis=1):
         self.ser.flushOutput()

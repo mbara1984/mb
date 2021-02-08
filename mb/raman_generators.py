@@ -2,6 +2,9 @@
 Tools for generating raman spectra and simulating measurements
 """
 
+import numpy as np
+import time
+
 def gaussian_peak(x,*params):
     y = np.zeros_like(x+0.0)
     #y += params[0]*0 # offset
@@ -23,9 +26,6 @@ def gaussLorentzApproxPeak(x,*params):
     y =  amp*( rho * np.exp( -4*np.log(2)*( (x - ctr)/wid)**2) + (1.-rho)/ ( 1+(2*(x-ctr)/wid)**2 ))
     return y
 
-
-import numpy as np
-import time
 def spline_baseline(n=256,m=64,seed=None):
     """
     Generate spline-based baseline signal spectra
@@ -66,6 +66,33 @@ def spline_baseline(n=256,m=64,seed=None):
     # evaluate B-splines
     return BSpline(knots, control_point_values, order-1, axis=1)(x_out) #+ (15+5*(np.random.rand()-0.5))
 
+def dict_baseline(n=256,m=64,Wbl=None,seed=None):
+    """
+    Generate spline-based baseline signal spectra
+    
+    Parameters
+    ----------
+    n : int
+        Number of spectral channels in a single spectrum
+    m : int
+        Number of spectra to generate
+    Wbl: Matrix 
+        Dictionary (nonegative) of background spectra
+        (k,n ) k -num components, n spec sampling
+    seed : int, optional
+        Seed for the random number generator
+    
+    Returns
+    -------
+    out : ndarray
+        Array with shape (m,n) containing the spectra
+    """
+    #if Wbl is None:
+        
+    cfs = np.random.rand(Wbl.shape[0],m) # random 
+    return (cfs.T @ Wbl )
+
+    
 def generate_raman(n, m, peaks, amps, fwhm=None, min_fwhm=2, max_fwhm=12, fwhm_ig =0.5, seed=None, randomize_n=False, varfwhm=0.0, rho=None):
     """
     Generate Raman spectra
@@ -181,7 +208,7 @@ def generate_measurements(n, m, peaks, amps, npeaks, fwhm,
                           photon_count=np.inf,
                           noise_level=0.001,
                           seed=None,
-                          randomize_n=False,baseline_level=1.0,rho=None):
+                          randomize_n=False,baseline_level=1.0,rho=None, baseline_mode='spline',Wbl=None):
     """
     Generate a set of simulated Raman measurements
 
@@ -234,8 +261,13 @@ def generate_measurements(n, m, peaks, amps, npeaks, fwhm,
     rs = np.random.RandomState(seed)      
 
     # generate spectra
-    print ("Creating baseline...")
-    bl = spline_baseline(n=n, m=m, seed=seed)
+    if baseline_mode=='spline':
+        print ("Creating SPLINE baseline...")
+        bl = spline_baseline(n=n, m=m, seed=seed)
+    elif baseline_mode=='dict':
+        print ("Creating Dictionaried baseline...")        
+        bl = dict_baseline(n=n, m=m, Wbl=Wbl, seed=seed)
+        
     print ("Creating random background Raman spectra...")
     ramanI = random_raman(n=n, m=m, npeaks=npeaks, seed=seed+2, randomize_n=randomize_n)
     print ("Creating target Raman spectra...")

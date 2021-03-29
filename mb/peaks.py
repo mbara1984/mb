@@ -27,7 +27,7 @@ def gaussLorentzApproxPeak(x,*params):
     return y
 
     
-def fit_peak_around(x,y,x0=5,sig=1,peak="lg"):
+def fit_peak_around(x,y,x0=5,sig=1,peak="lg", maxfev = 14600, xtol=1e-14):
 
     if peak == "lg":
         func = gaussLorentzApproxPeak
@@ -39,14 +39,14 @@ def fit_peak_around(x,y,x0=5,sig=1,peak="lg"):
     ub = [len(x),2*max(y),sig*13,1]
     
     bounds = [lb,ub]
-    popt, pcov = opt.curve_fit(func, x, y, p0=guess,  maxfev = 3*4600,bounds=bounds,xtol=1e-12)
+    popt, pcov = opt.curve_fit(func, x, y, p0=guess,  bounds=bounds,maxfev = maxfev,  xtol=xtol)
     #popt = guess
-    print(guess)    
-    print(popt)
+    #print(guess)    
+    #print(popt)
     fit = func(x, *popt)
     return popt[0],popt[1],popt[2],popt[3],fit # x0,amp,fwhm
 
-def fit_peak_by_peak(yy0,n=3,sigma=3):
+def fit_peak_by_peak(yy0,n=3,sigma=3, maxfev = 14600, xtol=1e-14):
     xx = np.arange(len(yy0))+0.0
     yy=yy0.copy()
     posL = []
@@ -56,12 +56,13 @@ def fit_peak_by_peak(yy0,n=3,sigma=3):
 
     tfit = yy*0
     x00=0
+
     for i in range(n):
-        print(i,yy.max(),len(yy==yy.max()),len(xx))
-        print(xx[yy==yy.max()][0])
+        #print(i,yy.max(),len(yy==yy.max()),len(xx))
+        #print(xx[yy==yy.max()][0])
         #x0 ,amp, std, fit = cali.fit_my_peaks(xx,yy,3)
         x00 = xx[yy==yy.max()][0]
-        x0, amp ,dx0, rho, fit = fit_peak_around(xx,yy,x00,sig=sigma)
+        x0, amp ,dx0, rho, fit = fit_peak_around(xx,yy,x00,sig=sigma, maxfev = maxfev,  xtol=xtol)
         posL.append(x0)
         ampL.append(amp)
         fwhmL.append(dx0)
@@ -71,9 +72,9 @@ def fit_peak_by_peak(yy0,n=3,sigma=3):
         tfit+=fit
     return np.array(ampL),np.array(posL),np.array(fwhmL),np.array(rhoL),tfit
 
-def fit_one_shot(yy0,n=3):
+def fit_one_shot(yy0,n=3,maxfev = 14600, xtol=1e-14):
     import scipy.optimize as opt 
-    reload(opt)
+    #reload(opt)
     yy=yy0.copy()
     def func(x,*params):
         #print("params len",len(params))
@@ -84,10 +85,10 @@ def fit_one_shot(yy0,n=3):
 
     x = np.arange(len(yy0))+0.0
 
-    amp, pos, fwhm , rho, fitP = fit_peak_by_peak(yy,n=n)
+    amp, pos, fwhm , rho, fitP = fit_peak_by_peak(yy,n=n, maxfev = maxfev,  xtol=xtol)
 
-    print("Pre fit done:")
-    print(amp, pos, fwhm , rho)
+    #print("Pre fit done:")
+    #print(amp, pos, fwhm , rho)
     geuss = []
     for k in range(n):
         geuss = geuss + [pos[k],amp[k],fwhm[k],rho[k]]        
@@ -97,34 +98,44 @@ def fit_one_shot(yy0,n=3):
     #    rho = params[3] # weight gaussian to lorentzian shape
     fitg = func(x, *geuss)
 
-    lb = [0.0,0,.0001,0]*n
-    ub = [len(x),11.1*max(yy0)+0.01,len(x)/5,1]*n
+    lb = [0,0,.0001,-1111]*n
+    ub = [len(x),11.1*max(yy0)+0.01,len(x),1]*n
     bounds = [lb,ub]
-    print(np.array(lb).reshape(-1,4))
-    print(np.array(ub).reshape(-1,4))
+    #print(np.array(lb).reshape(-1,4))
+    #print(np.array(ub).reshape(-1,4))
     
     def in_bounds(x, lb, ub):
         """Check if a point lies within bounds."""
         return np.all((x >= lb) & (x <= ub))
+    #geuss[-1]=111111111111    
     geuss = np.array(geuss)
-    print(in_bounds(geuss, lb, ub))
-    print(geuss)
-    print(np.array(geuss).reshape(-1,4))
-    
-    print((geuss >= lb) * (geuss <= ub))
-    ddx = False == (np.array((geuss >= lb) * (geuss <= ub)))
-    print("x0")
-    print(geuss[ddx])
-    print("lower")
-    print(np.array((lb))[ddx])
-    print("upper")
-    print(np.array(ub)[ddx])
+    ddx = np.array((False == (np.array((geuss >= lb) * (geuss <= ub)))))
 
+    #print(geuss,ddx[::2])
+    #print("ddx "*7,ddx)
+    #print(in_bounds(geuss, lb, ub))
+    midx=np.arange(len(geuss))
+    lbub = np.hstack([lb,ub]).ravel()
+    if ddx.sum()>0:
+        geuss[midx[ddx]] =  lbub[midx[ddx]]
+        print('init err')
+    #ddx = False == (np.array((geuss >= lb) * (geuss <= ub)))    
+    #print(ddx)
+
+    # print(geuss)
+    # print(np.array(geuss).reshape(-1,4))
     
-    
-    print(ub)
+    # print((geuss >= lb) * (geuss <= ub))
+
+    # print("x0")
+    # print(geuss[ddx])
+    # print("lower")
+    # print(np.array((lb))[ddx])
+    # print("upper")
+    # print(np.array(ub)[ddx])
+    # print(ub)
     #popt, pcov = opt.curve_fit(func, x, yy0, p0=guess,  maxfev = 13*4600, bounds = bounds,method = 'lm', 'trf', 'dogbox'})
-    popt, pcov = opt.curve_fit(func, x, yy, p0=geuss,  maxfev = 5*4600, bounds = bounds, xtol=1e-14)    
+    popt, pcov = opt.curve_fit(func, x, yy, p0=geuss,  bounds = bounds, maxfev = maxfev,  xtol=xtol)    
     fit = func(x, *popt)
 
     amps  = []
@@ -142,7 +153,7 @@ def fit_one_shot(yy0,n=3):
 
     ii = np.argsort(amps)[::-1]
     # x0,amp,fwhm,rho,fs,fit
-    return np.array(pos)[ii],np.array(amps)[ii],np.array(fwhm)[ii], np.array(rho)[ii], np.array(fs)[ii],fit
+    return np.array(pos)[ii],np.array(amps)[ii],np.array(fwhm)[ii], np.array(rho)[ii], np.array(fs)[ii],fit,pcov
 
 def test_peaks():
 

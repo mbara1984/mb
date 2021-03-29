@@ -47,6 +47,55 @@ def read_nanodrop(fname):
     return aa, names
 
 
+def read_cary_UvVis(fname):
+    """
+    reads agilent UV-VIS spectrometer CVS data,
+    input:
+    filename,
+
+    outputs:
+    wave     - wavelength [nm]  (assuming all samples measured with same setup)
+    data,    - absorption spectra for all samples 
+    sname    - list of labels given to each measured sample
+
+    # ex:
+
+    import mb
+    wave, data, sname = mb.hardware.read_cary_UvVis('dmem.csv')
+    plot(wave,data)
+    legend(sname)
+
+    """
+
+    fa=open(fname,'r')
+    samples = fa.readline()
+    sname=[]
+    while True:
+        i = samples.find(',,')
+        if i==-1:
+            break
+        sname.append(samples[0:i])
+        samples=samples[i+2:]
+    fields  = fa.readline()
+    k=2
+    while True:
+        s=fa.readline()
+        if not s[0].isdigit():
+            break
+        k+=1
+    footer_start=k
+    while True:
+        s=fa.readline()
+        if s == '':
+            break
+        k+=1
+    data = np.genfromtxt(fname,delimiter=',',skip_header=2,skip_footer=k-footer_start)
+
+    wave = data[:,0] # assuming all data collected with sampe wavelength settings, not need to be a case -> [wave1,data1,wave2,data2....]
+    data = data[:,1:-1:2]
+
+    return wave, data, sname 
+
 
 def get_cary_flourescence_3Ddata(fname):
     """

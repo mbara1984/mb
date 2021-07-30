@@ -70,7 +70,7 @@ def fit_peak_by_peak(yy0,n=3,sigma=3, maxfev = 14600, xtol=1e-14):
         
         yy-=fit
         tfit+=fit
-    return np.array(ampL),np.array(posL),np.array(fwhmL),np.array(rhoL),tfit
+    return np.array(ampL),np.array(posL),np.array(fwhmL),np.array(rhoL),tfit,((tfit-yy0)**2).sum()
 
 def fit_one_shot(yy0,n=3,maxfev = 14600, xtol=1e-14):
     import scipy.optimize as opt 
@@ -85,7 +85,7 @@ def fit_one_shot(yy0,n=3,maxfev = 14600, xtol=1e-14):
 
     x = np.arange(len(yy0))+0.0
 
-    amp, pos, fwhm , rho, fitP = fit_peak_by_peak(yy,n=n, maxfev = maxfev,  xtol=xtol)
+    amp, pos, fwhm , rho, fitP,er = fit_peak_by_peak(yy,n=n, maxfev = maxfev,  xtol=xtol)
 
     #print("Pre fit done:")
     #print(amp, pos, fwhm , rho)

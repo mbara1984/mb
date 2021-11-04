@@ -19,7 +19,106 @@ def saveMyFig(fname='',figdir=''):
 
     return fname+'.pdf'
 
+def plotyy(a,b):
+    """
+    ax1,ax2=plotyy((t,data1),(t,data2))
 
+    ax1.plot(t,-data1,'r') #to plot on ax1 axis
+    ax2.plot(t,-data2,'r') #to plot on ax2 axis     
+    use:
+    
+    ax2.set_ylabel('sin', color=color)  
+    etc
+    """
+
+    from matplotlib.pylab import plt 
+    
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:red'
+    ax1.plot(*a,color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:blue'
+    ax2.plot(*b, color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    return ax1,ax2
+
+
+def plotxx(a,b):
+    """
+    ax1,ax2=plotyy((t,data1),(t,data2))
+
+    ax1.plot(t,-data1,'r') #to plot on ax1 axis
+    ax2.plot(t,-data2,'r') #to plot on ax2 axis     
+    use:
+    
+    ax2.set_ylabel('sin', color=color)  
+    etc
+    """
+    from matplotlib.pylab import plt 
+    
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:red'
+    ax1.plot(*a,color=color)
+    ax1.tick_params(axis='x', labelcolor=color)
+
+    ax2 = ax1.twiny()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:blue'
+    ax2.plot(*b, color=color)
+    ax2.tick_params(axis='x', labelcolor=color)
+
+    return ax1,ax2
+
+
+def plot_t(x,y,t=None,colormap='inferno'):
+
+    import numpy as np
+    from matplotlib import pyplot as plt
+    from matplotlib.collections import LineCollection
+
+    if t is None: # so can see speed
+        t = np.linspace(0,1,x.shape[0]) # your "time" variable
+
+    # set up a list of (x,y) points
+    points = np.array([x,y]).transpose().reshape(-1,1,2)
+
+
+    # set up a list of segments
+    segs = np.concatenate([points[:-1],points[1:]],axis=1)
+    #print segs.shape  # Out: ( len(x)-1, 2, 2 )
+                      # see what we've done here -- we've mapped our (x,y)
+                      # points to an array of segment start/end coordinates.
+                      # segs[i,0,:] == segs[i-1,1,:]
+
+    # make the collection of segments
+    lc = LineCollection(segs, cmap=plt.get_cmap(colormap))
+    lc.set_array(t) # color the segments by our parameter
+
+    # plot the collection
+    plt.gca().add_collection(lc) # add the collection to the plot
+    plt.xlim(x.min(), x.max()) # line collections don't auto-scale the plot
+    plt.ylim(y.min(), y.max())
+
+
+
+
+def short_periodogram(a,fft_size=128,df=1,step=16):
+    """ moving window periodogram """
+    from scipy.signal import periodogram
+    window = np.hanning(fft_size)
+    res=[]
+    for i in range(0,len(a)-fft_size,step):
+        aa = a[i: (i+ fft_size)]
+        p=periodogram(aa*window,df)
+        res.append(p[1][1:])
+    return np.array(res),2*np.pi*p[0]
+    
 
 def inset(plot_cmd, tit="",loc=[.15, .675, .2, .2]):
     a = axes(loc, axisbg='y')
@@ -232,3 +331,37 @@ def dotProductTest(Af,ATf,dimf,fil=False,seed=False):
     return Axx,Byy,x,y, (2*(dot1-dot2)/(dot1+dot2))
 
 dp_test = dotProductTest
+
+
+def dos2unix(f):
+    """\
+    convert dos linefeeds (crlf) to unix (lf) + decodes ISO encoding if needed
+    usage: dos2unix(fileneme)
+    returns StringIO readable by genfromtxt (no need encoding....) 
+    
+    """
+
+    import sys
+    from io import StringIO
+
+    import subprocess
+    out = subprocess.check_output(["file", f]).decode()
+    i1=out.find(":")+2
+    i2=out.find("text")-1
+    encoding=out[i1:i2].strip().lower()
+    if encoding[0] =='i':
+        encoding+='-2'
+    print("detected file: ", encoding)
+    content = ''
+    outsize = 0
+    with open(f, 'rb') as infile:
+        content = infile.read()
+    output=b''
+    #with open(sys.argv[2], 'wb') as output:
+    for line in content.splitlines():
+        outsize += len(line) + 1
+        output += ( line + b'\n')
+        
+    output_s = output.decode(encoding=encoding)     
+    return StringIO(output_s)
+    #print("Done. Stripped %s bytes." % (len(content)-outsize))
